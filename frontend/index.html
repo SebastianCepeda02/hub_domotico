@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hub Domótico</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="/static/app.js"></script>
+    <style>
+        [x-cloak] { display: none !important; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #1e293b; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen" x-data="hub()" x-cloak>
+
+    <!-- Header -->
+    <header class="bg-slate-800 border-b border-slate-700 px-6 py-3 flex items-center justify-between sticky top-0 z-10">
+        <div class="flex items-center gap-3">
+            <span class="text-xl">🏠</span>
+            <h1 class="text-lg font-bold text-white">Hub Domótico</h1>
+        </div>
+        <div class="flex items-center gap-4">
+            <span class="text-xs text-slate-400" x-text="sistema.fecha || ''"></span>
+            <span class="flex items-center gap-1.5 text-sm font-medium">
+                <span class="w-2 h-2 rounded-full animate-pulse"
+                    :class="online ? 'bg-green-400' : 'bg-red-400'"></span>
+                <span :class="online ? 'text-green-400' : 'text-red-400'"
+                    x-text="online ? 'Online' : 'Offline'"></span>
+            </span>
+        </div>
+    </header>
+
+    <!-- Layout principal -->
+    <div class="flex" style="height: calc(100vh - 57px);">
+
+        <!-- Sidebar izquierdo -->
+        <aside class="w-72 bg-slate-800 border-r border-slate-700 overflow-y-auto flex-shrink-0 flex flex-col">
+            <div class="p-4 flex-1">
+
+                <!-- ── DISPOSITIVOS ── -->
+                <div class="mb-6">
+                    <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                        <span>📱</span> Dispositivos
+                    </h2>
+
+                    <template x-if="dispositivos.length === 0">
+                        <p class="text-slate-500 text-sm italic">Sin dispositivos registrados</p>
+                    </template>
+
+                    <template x-for="disp in dispositivos" :key="disp.id">
+                        <div class="bg-slate-700/60 rounded-xl p-3 mb-2 border border-slate-600/50">
+                            <div class="flex items-center justify-between mb-2">
+                                <div class="min-w-0">
+                                    <p class="text-sm font-semibold text-white truncate" x-text="disp.ubicacion"></p>
+                                    <p class="text-xs text-slate-400 truncate" x-text="disp.mac"></p>
+                                </div>
+                                <span class="w-2 h-2 bg-green-400 rounded-full flex-shrink-0 ml-2"></span>
+                            </div>
+
+                            <template x-if="disp.actuadores.length === 0">
+                                <p class="text-xs text-slate-500 mt-1">Sin actuadores</p>
+                            </template>
+
+                            <template x-for="act in disp.actuadores" :key="act.id">
+                                <div class="flex items-center justify-between py-1.5 border-t border-slate-600/50 mt-1">
+                                    <span class="text-xs text-slate-300 capitalize" x-text="act.tipo"></span>
+                                    <button @click="toggleActuador(act)"
+                                        class="relative inline-flex h-5 w-9 items-center rounded-full transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 focus:ring-offset-slate-700"
+                                        :class="act.estado === 'encendido' ? 'bg-blue-500' : 'bg-slate-500'"
+                                        :title="act.estado === 'encendido' ? 'Apagar' : 'Encender'">
+                                        <span class="inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform duration-200"
+                                            :class="act.estado === 'encendido' ? 'translate-x-4' : 'translate-x-1'">
+                                        </span>
+                                    </button>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- ── AUTOMATIZACIONES ── -->
+                <div>
+                    <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                        <span>⚡</span> Automatizaciones
+                    </h2>
+
+                    <template x-if="automatizaciones.length === 0">
+                        <p class="text-slate-500 text-sm italic mb-3">Sin automatizaciones</p>
+                    </template>
+
+                    <template x-for="auto in automatizaciones" :key="auto.id">
+                        <div class="bg-slate-700/60 rounded-xl p-3 mb-2 border border-slate-600/50"
+                            :class="auto.activa ? '' : 'opacity-50'">
+                            <div class="flex items-start justify-between gap-2">
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-sm font-semibold text-white truncate" x-text="auto.nombre"></p>
+                                    <p class="text-xs text-slate-400 mt-0.5 leading-relaxed"
+                                        x-text="describirAuto(auto)"></p>
+                                </div>
+                                <div class="flex items-center gap-2 flex-shrink-0 mt-0.5">
+                                    <button @click="toggleAuto(auto)"
+                                        class="relative inline-flex h-5 w-9 items-center rounded-full transition-all duration-200"
+                                        :class="auto.activa ? 'bg-blue-500' : 'bg-slate-500'">
+                                        <span class="inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform duration-200"
+                                            :class="auto.activa ? 'translate-x-4' : 'translate-x-1'">
+                                        </span>
+                                    </button>
+                                    <button @click="eliminarAuto(auto.id)"
+                                        class="text-slate-500 hover:text-red-400 transition-colors text-base leading-none"
+                                        title="Eliminar">✕</button>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Botón nueva automatización -->
+                    <button @click="mostrarFormAuto = !mostrarFormAuto"
+                        class="w-full text-sm text-blue-400 hover:text-blue-300 border border-dashed border-slate-600 hover:border-blue-500 rounded-xl py-2.5 transition-all duration-150 mt-1">
+                        + Nueva automatización
+                    </button>
+
+                    <!-- Formulario nueva automatización -->
+                    <div x-show="mostrarFormAuto" x-transition:enter="transition ease-out duration-150"
+                        x-transition:enter-start="opacity-0 -translate-y-2"
+                        x-transition:enter-end="opacity-100 translate-y-0"
+                        class="mt-3 bg-slate-700/60 rounded-xl p-3 border border-slate-600/50 space-y-2">
+
+                        <input x-model="nuevaAuto.nombre" type="text" placeholder="Nombre de la regla"
+                            class="w-full bg-slate-600 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-400 border border-slate-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
+
+                        <select x-model="nuevaAuto.condicion_tipo"
+                            class="w-full bg-slate-600 rounded-lg px-3 py-2 text-sm text-white border border-slate-500 focus:border-blue-500 focus:outline-none">
+                            <option value="temperatura_mayor">Temperatura mayor que</option>
+                            <option value="temperatura_menor">Temperatura menor que</option>
+                            <option value="humedad_mayor">Humedad mayor que</option>
+                            <option value="humedad_menor">Humedad menor que</option>
+                        </select>
+
+                        <input x-model="nuevaAuto.condicion_valor" type="number" placeholder="Valor (ej: 30)"
+                            class="w-full bg-slate-600 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-400 border border-slate-500 focus:border-blue-500 focus:outline-none">
+
+                        <input x-model="nuevaAuto.condicion_ubicacion" type="text" placeholder="Ubicación del sensor"
+                            class="w-full bg-slate-600 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-400 border border-slate-500 focus:border-blue-500 focus:outline-none">
+
+                        <select x-model="nuevaAuto.accion_actuador_id"
+                            class="w-full bg-slate-600 rounded-lg px-3 py-2 text-sm text-white border border-slate-500 focus:border-blue-500 focus:outline-none">
+                            <option value="">Seleccionar actuador...</option>
+                            <template x-for="disp in dispositivos" :key="disp.id">
+                                <template x-for="act in disp.actuadores" :key="act.id">
+                                    <option :value="act.id" x-text="`${disp.ubicacion} — ${act.tipo}`"></option>
+                                </template>
+                            </template>
+                        </select>
+
+                        <select x-model="nuevaAuto.accion_estado"
+                            class="w-full bg-slate-600 rounded-lg px-3 py-2 text-sm text-white border border-slate-500 focus:border-blue-500 focus:outline-none">
+                            <option value="encendido">→ Encender</option>
+                            <option value="apagado">→ Apagar</option>
+                        </select>
+
+                        <div class="flex gap-2 pt-1">
+                            <button @click="crearAutomatizacion()"
+                                class="flex-1 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white text-sm font-medium rounded-lg py-2 transition-colors">
+                                Guardar
+                            </button>
+                            <button @click="mostrarFormAuto = false"
+                                class="flex-1 bg-slate-600 hover:bg-slate-500 text-white text-sm rounded-lg py-2 transition-colors">
+                                Cancelar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Panel principal -->
+        <main class="flex-1 overflow-y-auto p-6 space-y-6">
+
+            <!-- Sistema -->
+            <section>
+                <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">Sistema</h2>
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+
+                    <div class="bg-slate-800 rounded-xl p-4 border border-slate-700">
+                        <p class="text-xs text-slate-500 mb-1 uppercase tracking-wide">CPU Temp</p>
+                        <p class="text-2xl font-bold"
+                            :class="cpuAlerta ? 'text-red-400' : 'text-white'"
+                            x-text="sistema.cpu_temperatura || '—'"></p>
+                    </div>
+
+                    <div class="bg-slate-800 rounded-xl p-4 border border-slate-700">
+                        <p class="text-xs text-slate-500 mb-1 uppercase tracking-wide">RAM</p>
+                        <p class="text-2xl font-bold text-white" x-text="sistema.ram?.uso_porcentaje || '—'"></p>
+                        <p class="text-xs text-slate-500 mt-1"
+                            x-text="sistema.ram ? `${sistema.ram.disponible_mb} MB libres` : ''"></p>
+                    </div>
+
+                    <div class="bg-slate-800 rounded-xl p-4 border border-slate-700">
+                        <p class="text-xs text-slate-500 mb-1 uppercase tracking-wide">SD</p>
+                        <p class="text-2xl font-bold text-white"
+                            x-text="sistema.almacenamiento_sd ? `${sistema.almacenamiento_sd.libre_gb} GB` : '—'"></p>
+                        <p class="text-xs text-slate-500 mt-1">libres</p>
+                    </div>
+
+                    <div class="bg-slate-800 rounded-xl p-4 border border-slate-700">
+                        <p class="text-xs text-slate-500 mb-1 uppercase tracking-wide">USB</p>
+                        <p class="text-2xl font-bold text-white"
+                            x-text="sistema.almacenamiento_usb?.uso_porcentaje || '—'"></p>
+                        <p class="text-xs text-slate-500 mt-1"
+                            x-text="sistema.almacenamiento_usb ? `${sistema.almacenamiento_usb.libre_gb} GB libres` : ''"></p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Sensores -->
+            <section>
+                <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">Sensores — Última lectura</h2>
+
+                <template x-if="lecturas_recientes.length === 0">
+                    <p class="text-slate-500 text-sm italic">Sin lecturas de sensores</p>
+                </template>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <template x-for="lectura in lecturas_recientes" :key="lectura.id">
+                        <div class="bg-slate-800 rounded-xl p-4 border border-slate-700">
+                            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3"
+                                x-text="lectura.ubicacion"></p>
+                            <div class="flex gap-6">
+                                <div>
+                                    <p class="text-3xl font-bold text-blue-400"
+                                        x-text="`${lectura.temperatura}°`"></p>
+                                    <p class="text-xs text-slate-500 mt-0.5">Temperatura</p>
+                                </div>
+                                <div>
+                                    <p class="text-3xl font-bold text-cyan-400"
+                                        x-text="`${lectura.humedad}%`"></p>
+                                    <p class="text-xs text-slate-500 mt-0.5">Humedad</p>
+                                </div>
+                            </div>
+                            <p class="text-xs text-slate-600 mt-3" x-text="formatFecha(lectura.fecha)"></p>
+                        </div>
+                    </template>
+                </div>
+            </section>
+
+            <!-- Historial -->
+            <section>
+                <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">Historial de lecturas</h2>
+                <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="border-b border-slate-700">
+                                <th class="text-left px-4 py-3 text-slate-400 font-medium text-xs uppercase tracking-wide">Ubicación</th>
+                                <th class="text-left px-4 py-3 text-slate-400 font-medium text-xs uppercase tracking-wide">Temp.</th>
+                                <th class="text-left px-4 py-3 text-slate-400 font-medium text-xs uppercase tracking-wide">Humedad</th>
+                                <th class="text-left px-4 py-3 text-slate-400 font-medium text-xs uppercase tracking-wide">Fecha</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="r in historial" :key="r.id">
+                                <tr class="border-b border-slate-700/40 hover:bg-slate-700/30 transition-colors">
+                                    <td class="px-4 py-2.5 text-slate-300" x-text="r.ubicacion"></td>
+                                    <td class="px-4 py-2.5 text-blue-400 font-semibold" x-text="`${r.temperatura}°C`"></td>
+                                    <td class="px-4 py-2.5 text-cyan-400 font-semibold" x-text="`${r.humedad}%`"></td>
+                                    <td class="px-4 py-2.5 text-slate-500 text-xs" x-text="formatFecha(r.fecha)"></td>
+                                </tr>
+                            </template>
+                            <template x-if="historial.length === 0">
+                                <tr>
+                                    <td colspan="4" class="px-4 py-8 text-center text-slate-500 text-sm italic">Sin datos</td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+        </main>
+    </div>
+</body>
+</html>

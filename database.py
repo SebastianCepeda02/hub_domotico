@@ -42,5 +42,18 @@ def crear_tablas():
             FOREIGN KEY (dispositivo_id) REFERENCES dispositivos(id)
         )
     """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS automatizaciones (
+            id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+            nombre               TEXT    NOT NULL,
+            condicion_tipo       TEXT    NOT NULL,
+            condicion_valor      REAL    NOT NULL,
+            condicion_ubicacion  TEXT    NOT NULL,
+            accion_actuador_id   INTEGER NOT NULL,
+            accion_estado        TEXT    NOT NULL,
+            activa               INTEGER DEFAULT 1,
+            fecha_creacion       TEXT    NOT NULL
+        )
+    """)
     conexion.commit()
     conexion.close()
