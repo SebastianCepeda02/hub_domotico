@@ -1,0 +1,140 @@
+/* DomoHub — Neon Mint design tokens (HSL) actualizado */
+:root {
+  /* Fondo más profundo y oscuro de styles.css */
+  --background: 222 25% 7%;
+  --foreground: 150 20% 95%;
+
+  --card: 222 25% 10%;
+  --card-foreground: 150 20% 95%;
+
+  /* Verde Mint más vibrante (#39FFB6 aproximado) */
+  --primary: 158 75% 52%;
+  --primary-foreground: 222 47% 5%;
+
+  --accent: 175 80% 60%;
+  --accent-foreground: 222 47% 5%;
+
+  --muted: 222 20% 16%;
+  --muted-foreground: 215 15% 65%;
+
+  --border: 222 20% 18%;
+  --sidebar: 222 28% 6%;
+  --sidebar-foreground: 150 15% 90%;
+  --sidebar-border: 222 20% 14%;
+  --sidebar-accent: 222 20% 14%;
+  
+  --destructive: 0 70% 55%;
+  /* Definición del resplandor neón */
+  --shadow-glow: 0 0 20px hsl(158 75% 52% / 0.35);
+}
+
+* { border-color: hsl(var(--border)); }
+[x-cloak] { display: none !important; }
+
+html, body { 
+  background: hsl(var(--background)); 
+  color: hsl(var(--foreground)); 
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Backgrounds */
+.bg-background  { background-color: hsl(var(--background)); }
+.bg-card        { background-color: hsl(var(--card)); }
+.bg-sidebar     { background-color: hsl(var(--sidebar)); }
+.bg-sidebar-accent { background-color: hsl(var(--sidebar-accent)); }
+.bg-muted       { background-color: hsl(var(--muted)); }
+.bg-primary     { background-color: hsl(var(--primary)); }
+.bg-accent      { background-color: hsl(var(--accent)); }
+.bg-destructive { background-color: hsl(var(--destructive)); }
+.bg-background\/80 { background-color: hsl(var(--background) / 0.8); }
+
+/* Opacidades para hover y capas (estilo styles.css) */
+.bg-primary\/10 { background-color: hsl(var(--primary) / 0.1); }
+.bg-primary\/20 { background-color: hsl(var(--primary) / 0.2); }
+
+/* Typography */
+.text-foreground { color: hsl(var(--foreground)); }
+.text-muted-foreground { color: hsl(var(--muted-foreground)); }
+.text-primary   { color: hsl(var(--primary)); }
+.text-primary-foreground { color: hsl(var(--primary-foreground)); }
+.text-accent    { color: hsl(var(--accent)); }
+.text-sidebar-foreground { color: hsl(var(--sidebar-foreground)); }
+
+/* Borders */
+.border-border  { border-color: hsl(var(--border)); }
+.border-sidebar-border { border-color: hsl(var(--sidebar-border)); }
+.border-primary\/30 { border-color: hsl(var(--primary) / 0.3); }
+.border-primary\/50 { border-color: hsl(var(--primary) / 0.5); }
+
+/* Hover states */
+.hover\:bg-muted:hover { background-color: hsl(var(--muted)); }
+.hover\:bg-primary\/20:hover { background-color: hsl(var(--primary) / 0.2); }
+.hover\:border-primary\/50:hover { border-color: hsl(var(--primary) / 0.5); }
+
+/* Gradients & Glow (Mejorado) */
+.bg-gradient-primary {
+  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+}
+.shadow-glow, .glow-primary {
+  box-shadow: var(--shadow-glow);
+}
+.hover\:shadow-glow:hover, .hover\:glow-primary:hover {
+  box-shadow: var(--shadow-glow);
+}
+
+/* Toggle switch */
+.toggle-switch {
+  position: relative;
+  display: inline-flex;
+  height: 1.5rem;
+  width: 2.75rem;
+  align-items: center;
+  border-radius: 9999px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  border: none;
+  padding: 0;
+  flex-shrink: 0;
+}
+.toggle-switch.is-on  { 
+  background-color: hsl(var(--primary)); 
+  box-shadow: var(--shadow-glow); 
+}
+.toggle-switch.is-off { background-color: hsl(var(--muted)); }
+
+.toggle-knob {
+  position: absolute;
+  top: 50%;
+  left: 2px;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 9999px;
+  background: #ffffff;
+  transform: translateY(-50%);
+  transition: left 0.2s ease;
+}
+.toggle-switch.is-on .toggle-knob {
+  left: calc(100% - 1.25rem - 2px);
+}
+
+/* System metrics progress bar */
+.metric-bar {
+  position: relative;
+  height: 8px;
+  width: 100%;
+  background: hsl(var(--muted));
+  border-radius: 9999px;
+  overflow: hidden;
+}
+.metric-bar > span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--accent)));
+  border-radius: 9999px;
+  transition: width 0.4s ease;
+}
+
+/* Scrollbar personalizada */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: hsl(var(--muted)); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: hsl(var(--primary) / 0.5); }

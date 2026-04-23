@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DomoHub</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏠</text></svg>" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="js/tailwind.config.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <link rel="stylesheet" href="css/styles.css" />
+
+  <script src="js/api.js"></script>
+  <script src="js/store.js"></script>
+  <script src="js/app.js"></script>
+
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body class="bg-background text-foreground min-h-screen font-sans antialiased"
+      x-data="domoHub()" x-init="init()" x-cloak>
+
+  <div class="flex min-h-screen w-full">
+
+    <!-- ============ SIDEBAR ============ -->
+    <aside class="border-r border-border bg-sidebar transition-all duration-300"
+           :class="sidebarOpen ? 'w-64' : 'w-16'">
+
+      <div class="flex h-16 items-center gap-3 border-b border-border px-4">
+        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-primary glow-primary">
+          <i data-lucide="home" class="h-5 w-5 text-primary-foreground"></i>
+        </div>
+        <div>
+          <h1 class="font-bold text-lg text-sidebar-foreground">DomoHub</h1>
+          <p class="text-xs text-muted-foreground">Smart Home</p>
+        </div>
+      </div>
+
+      <nav class="p-3 space-y-1">
+        <template x-for="item in nav" :key="item.id">
+          <a href="#" @click.prevent="page = item.id"
+             class="flex items-center gap-3 rounded-lg px-3 py-2 transition-colors"
+             :class="page === item.id
+               ? 'bg-sidebar-accent text-primary'
+               : 'text-sidebar-foreground hover:bg-sidebar-accent/50'">
+            <i :data-lucide="item.icon" class="h-5 w-5 shrink-0"></i>
+            <span x-show="sidebarOpen" x-text="item.label"></span>
+          </a>
+        </template>
+      </nav>
+
+      <button @click="sidebarOpen = !sidebarOpen"
+              class="absolute bottom-4 left-4 text-muted-foreground hover:text-foreground">
+        <i data-lucide="chevrons-left"  class="h-5 w-5" x-show="sidebarOpen"></i>
+        <i data-lucide="chevrons-right" class="h-5 w-5" x-show="!sidebarOpen"></i>
+      </button>
+    </aside>
+
+    <!-- ============ MAIN ============ -->
+    <main class="flex-1 overflow-auto">
+
+      <!-- Header -->
+      <header class="sticky top-0 z-10 flex h-16 items-center gap-4 border-b border-border bg-background/80 px-6 backdrop-blur">
+        <h1 class="text-xl font-semibold" x-text="pageTitle()"></h1>
+        <div class="ml-auto flex items-center gap-2 text-sm text-muted-foreground">
+          <span class="h-2 w-2 rounded-full"
+                :class="apiStatus === 'Conectado' ? 'bg-primary glow-primary' : 'bg-red-500'"></span>
+          <span x-text="apiStatus"></span>
+        </div>
+      </header>
+
+      <!-- Loading global -->
+      <div x-show="loading" class="flex items-center justify-center py-20 text-muted-foreground text-sm">
+        <i data-lucide="loader-2" class="h-5 w-5 mr-2 animate-spin"></i>
+        Cargando…
+      </div>
+
+      <!-- ===== PAGE: HOME ===== -->
+      <section x-show="page === 'home' && !loading" class="p-6 space-y-8">
+
+        <div>
+          <h2 class="text-3xl font-bold mb-1" x-text="greeting()"></h2>
+          <p class="text-muted-foreground">Tu casa en un vistazo</p>
+        </div>
+
+        <!-- Escenas rápidas -->
+        <div x-show="escenas.length > 0">
+          <h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Escenas rápidas</h3>
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <template x-for="escena in escenas.filter(e => e.activa)" :key="escena.id">
+              <button @click="activarEscena(escena)"
+                      class="flex items-center gap-3 rounded-xl border border-border bg-card p-4 hover:border-primary/50 hover:glow-primary transition-all text-left">
+                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gradient-primary">
+                  <i data-lucide="zap" class="h-5 w-5 text-primary-foreground"></i>
+                </div>
+                <span class="font-medium text-sm" x-text="escena.nombre"></span>
+              </button>
+            </template>
+          </div>
+        </div>
+
+        <!-- Dispositivos favoritos por habitación -->
+<template x-for="room in favoriteRooms()" :key="room">
+  <div>
+    <h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3" x-text="room"></h3>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+      <template x-for="device in devicesByRoom(room).filter(d => d.favorite)" :key="device.id + '-' + device.category">
+
+        <div class="rounded-xl border border-border bg-card p-4 hover:border-primary/50 transition-colors"
+             :class="!device.online ? 'opacity-50' : ''">
+          <div class="flex items-start justify-between">
+            <div class="flex items-center gap-3">
+              <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
+                <i :data-lucide="iconFor(device.kind)" class="h-5 w-5 text-primary"></i>
+              </div>
+              <div>
+                <p class="font-semibold leading-tight" x-text="device.name"></p>
+                <p class="text-xs text-muted-foreground" x-text="device.room"></p>
+              </div>
+            </div>
+            <button @click="toggleFavorito(device.id, device.category)"
+                    class="transition-colors ml-1"
+                    :class="device.favorite ? 'text-primary' : 'text-muted-foreground hover:text-primary'">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24"
+                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                  :fill="device.favorite ? 'currentColor' : 'none'">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+              </svg>
+            </button>
+          </div>
+          <div x-show="device.category === 'sensor'" class="mt-4">
+            <p class="text-3xl font-bold text-primary">
+              <span x-text="device.value ?? '—'"></span>
+              <span class="text-base text-muted-foreground ml-1" x-text="device.unit || ''"></span>
+            </p>
+            <p class="text-xs text-muted-foreground mt-1" x-show="device.lastSeen" x-text="device.lastSeen"></p>
+          </div>
+          <div x-show="device.category === 'actuador'" class="flex items-center justify-between mt-4">
+            <span class="text-sm text-muted-foreground" x-text="device.on ? 'Encendido' : 'Apagado'"></span>
+            <button @click="toggleActuador(device.id)"
+                    class="toggle-switch"
+                    :class="device.on ? 'is-on' : 'is-off'">
+              <span class="toggle-knob"></span>
+            </button>
+          </div>
+        </div>
+
+      </template>
+    </div>
+  </div>
+</template>
+
+        <p x-show="dashboard.length === 0 && !loading"
+           class="text-muted-foreground text-sm">
+          No hay dispositivos vinculados.
+          <button @click="abrirModalVincular()" class="text-primary underline ml-1">Vincular primero</button>
+        </p>
+      </section>
+
+      <!-- ===== PAGE: DEVICES ===== -->
+      <section x-show="page === 'devices' && !loading" class="p-6 space-y-6">
+
+        <div class="flex items-center justify-between gap-3 flex-wrap">
+          <div class="relative flex-1 max-w-md">
+            <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"></i>
+            <input x-model="search" type="text" placeholder="Buscar dispositivo, habitación o tipo…"
+                   class="w-full rounded-lg border border-border bg-card pl-10 pr-3 py-2 text-sm focus:outline-none focus:border-primary" />
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="text-sm text-muted-foreground">
+              <span x-text="filteredDevices().length"></span> dispositivos
+            </span>
+            <button @click="abrirModalVincular()"
+                    class="flex items-center gap-2 rounded-lg bg-gradient-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:glow-primary transition-all">
+              <i data-lucide="plus" class="h-4 w-4"></i>
+              <span>Vincular</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <template x-for="device in filteredDevices()" :key="device.id + '-' + device.category">
+
+            <div class="rounded-xl border border-border bg-card p-4 hover:border-primary/50 transition-colors"
+                 :class="!device.online ? 'opacity-50' : ''">
+
+              <div class="flex items-start justify-between">
+                <div class="flex items-center gap-3">
+                  <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
+                    <i :data-lucide="iconFor(device.kind)" class="h-5 w-5 text-primary"></i>
+                  </div>
+                  <div>
+                    <p class="font-semibold leading-tight" x-text="device.name"></p>
+                    <p class="text-xs text-muted-foreground" x-text="device.room"></p>
+                  </div>
+                </div>
+                <button @click="abrirModalEditar(device)"
+                        class="text-muted-foreground hover:text-primary transition-colors ml-2">
+                  <i data-lucide="pencil" class="h-4 w-4"></i>
+                </button>
+                <button @click="toggleFavorito(device.id, device.category)"
+                        class="transition-colors ml-1"
+                        :class="device.favorite ? 'text-primary' : 'text-muted-foreground hover:text-primary'">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24"
+                      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                      :fill="device.favorite ? 'currentColor' : 'none'">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                  </svg>
+                </button>
+              </div>
+
+              <!-- Sensor -->
+              <div x-show="device.category === 'sensor'" class="mt-4">
+                <p class="text-3xl font-bold text-primary">
+                  <span x-text="device.value ?? '—'"></span>
+                  <span class="text-base text-muted-foreground ml-1" x-text="device.unit || ''"></span>
+                </p>
+                <p class="text-xs text-muted-foreground mt-1" x-show="device.lastSeen" x-text="device.lastSeen"></p>
+              </div>
+
+              <!-- Actuador -->
+              <div x-show="device.category === 'actuador'" class="flex items-center justify-between mt-4">
+                <span class="text-sm text-muted-foreground" x-text="device.on ? 'Encendido' : 'Apagado'"></span>
+                <button @click="toggleActuador(device.id)"
+                        class="toggle-switch"
+                        :class="device.on ? 'is-on' : 'is-off'">
+                  <span class="toggle-knob"></span>
+                </button>
+              </div>
+
+              <p x-show="!device.online" class="text-xs text-muted-foreground mt-2">Sin conexión</p>
+            </div>
+
+          </template>
+        </div>
+      </section>
+
+      <!-- ===== PAGE: AUTOMATIONS ===== -->
+      <section x-show="page === 'automations' && !loading" class="p-6 space-y-8">
+
+        <!-- Reglas -->
+        <div>
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h2 class="text-2xl font-bold">Reglas</h2>
+              <p class="text-muted-foreground text-sm">SI sensor → ENTONCES actuador</p>
+            </div>
+            <button @click="abrirModalRegla()"
+                    class="flex items-center gap-2 rounded-lg bg-gradient-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:glow-primary transition-all">
+              <i data-lucide="plus" class="h-4 w-4"></i>
+              <span>Nueva regla</span>
+            </button>
+          </div>
+
+          <div x-show="reglas.length === 0" class="text-muted-foreground text-sm">No hay reglas creadas.</div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <template x-for="regla in reglas" :key="regla.id">
+              <div class="rounded-xl border border-border bg-card p-5 hover:border-primary/50 transition-colors">
+                <div class="flex items-start justify-between gap-3 mb-3">
+                  <div>
+                    <h3 class="font-semibold" x-text="regla.nombre"></h3>
+                    <p class="text-xs text-muted-foreground mt-0.5">
+                      Sensor: <span x-text="regla.sensor_nombre || regla.sensor_id"></span>
+                    </p>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <button @click="toggleRegla(regla.id)"
+                            class="toggle-switch"
+                            :class="regla.activa ? 'is-on' : 'is-off'">
+                      <span class="toggle-knob"></span>
+                    </button>
+                    <button @click="eliminarRegla(regla.id)"
+                            class="text-muted-foreground hover:text-red-400 transition-colors">
+                      <i data-lucide="trash-2" class="h-4 w-4"></i>
+                    </button>
+                  </div>
+                </div>
+                <div class="space-y-2 text-sm">
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs font-bold text-primary">SI</span>
+                    <span x-text="`${regla.sensor_nombre || 'sensor'} ${regla.operador} ${regla.umbral}`"></span>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span class="text-xs font-bold text-accent">THEN</span>
+                    <span x-text="`${regla.actuador_nombre || 'actuador'} → ${regla.accion.toUpperCase()}`"></span>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <!-- Escenas -->
+        <div>
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h2 class="text-2xl font-bold">Escenas</h2>
+              <p class="text-muted-foreground text-sm">Acciones agrupadas — manuales o por hora</p>
+            </div>
+            <button @click="abrirModalEscena()"
+                    class="flex items-center gap-2 rounded-lg bg-gradient-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:glow-primary transition-all">
+              <i data-lucide="plus" class="h-4 w-4"></i>
+              <span>Nueva escena</span>
+            </button>
+          </div>
+
+          <div x-show="escenas.length === 0" class="text-muted-foreground text-sm">No hay escenas creadas.</div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <template x-for="escena in escenas" :key="escena.id">
+              <div class="rounded-xl border border-border bg-card p-5 hover:border-primary/50 transition-colors">
+                <div class="flex items-start justify-between gap-3 mb-3">
+                  <div>
+                    <h3 class="font-semibold" x-text="escena.nombre"></h3>
+                    <p class="text-xs text-muted-foreground mt-0.5">
+                      Disparador: <span x-text="escena.disparador === 'manual' ? 'Manual' : escena.disparador"></span>
+                    </p>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <button @click="activarEscena(escena)"
+                            x-show="escena.disparador === 'manual' && escena.activa"
+                            class="flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-xs hover:border-primary/50 transition-colors">
+                      <i data-lucide="play" class="h-3 w-3"></i>
+                      Activar
+                    </button>
+                    <button @click="toggleEscena(escena.id)"
+                            class="toggle-switch"
+                            :class="escena.activa ? 'is-on' : 'is-off'">
+                      <span class="toggle-knob"></span>
+                    </button>
+                    <button @click="eliminarEscena(escena.id)"
+                            class="text-muted-foreground hover:text-red-400 transition-colors">
+                      <i data-lucide="trash-2" class="h-4 w-4"></i>
+                    </button>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2 text-sm">
+                  <span class="text-xs font-bold text-accent">THEN</span>
+                  <span x-text="`${escena.actuador_nombre || 'actuador'} → ${escena.accion.toUpperCase()}`"></span>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== PAGE: SISTEMA ===== -->
+      <section x-show="page === 'system' && !loading" class="p-6 space-y-6">
+
+        <div class="flex items-end justify-between flex-wrap gap-3">
+          <div>
+            <h2 class="text-2xl font-bold">Estado del sistema</h2>
+            <p class="text-muted-foreground">Métricas en vivo de tu Raspberry Pi</p>
+          </div>
+          <button @click="fetchSystem()"
+                  class="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm hover:border-primary/50 transition-colors">
+            <i data-lucide="refresh-cw" class="h-4 w-4"></i>
+            Actualizar
+          </button>
+        </div>
+
+        <div x-show="systemError" class="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground" x-text="systemError"></div>
+        <div x-show="!system && !systemError" class="text-muted-foreground text-sm">Cargando…</div>
+
+        <div x-show="system" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
+          <!-- Estado -->
+          <div class="rounded-xl border border-border bg-card p-5">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+                <i data-lucide="activity" class="h-5 w-5 text-primary"></i>
+              </div>
+              <div>
+                <p class="text-xs uppercase tracking-wider text-muted-foreground">Estado</p>
+                <p class="font-semibold capitalize" x-text="system?.estado"></p>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 text-sm">
+              <span class="h-2 w-2 rounded-full bg-primary glow-primary"></span>
+              <span class="text-muted-foreground">Servicio activo</span>
+            </div>
+          </div>
+
+          <!-- CPU -->
+          <div class="rounded-xl border border-border bg-card p-5">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+                <i data-lucide="thermometer" class="h-5 w-5 text-primary"></i>
+              </div>
+              <div>
+                <p class="text-xs uppercase tracking-wider text-muted-foreground">Temperatura CPU</p>
+                <p class="font-semibold">Núcleo</p>
+              </div>
+            </div>
+            <p class="text-3xl font-bold text-primary" x-text="system?.cpu_temperatura"></p>
+          </div>
+
+          <!-- RAM -->
+          <div class="rounded-xl border border-border bg-card p-5">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+                <i data-lucide="memory-stick" class="h-5 w-5 text-primary"></i>
+              </div>
+              <div>
+                <p class="text-xs uppercase tracking-wider text-muted-foreground">Memoria RAM</p>
+                <p class="font-semibold" x-text="system?.ram?.uso_porcentaje + ' usado'"></p>
+              </div>
+            </div>
+            <div class="metric-bar mb-3">
+              <span :style="`width: ${pct(system?.ram?.uso_porcentaje)}%`"></span>
+            </div>
+            <div class="flex justify-between text-xs text-muted-foreground">
+              <span>Disponible: <strong class="text-foreground" x-text="system?.ram?.disponible_mb + ' MB'"></strong></span>
+              <span>Total: <strong class="text-foreground" x-text="system?.ram?.total_mb + ' MB'"></strong></span>
+            </div>
+          </div>
+
+          <!-- SD -->
+          <div class="rounded-xl border border-border bg-card p-5">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+                <i data-lucide="hard-drive" class="h-5 w-5 text-primary"></i>
+              </div>
+              <div>
+                <p class="text-xs uppercase tracking-wider text-muted-foreground">Tarjeta SD</p>
+                <p class="font-semibold"><span x-text="system?.almacenamiento_sd?.libre_gb"></span> GB libres</p>
+              </div>
+            </div>
+            <div class="metric-bar mb-3">
+              <span :style="`width: ${sdUsedPct()}%`"></span>
+            </div>
+            <div class="flex justify-between text-xs text-muted-foreground">
+              <span>Usado: <strong class="text-foreground" x-text="(system?.almacenamiento_sd?.total_gb - system?.almacenamiento_sd?.libre_gb).toFixed(2) + ' GB'"></strong></span>
+              <span>Total: <strong class="text-foreground" x-text="system?.almacenamiento_sd?.total_gb + ' GB'"></strong></span>
+            </div>
+          </div>
+
+          <!-- USB -->
+          <div class="rounded-xl border border-border bg-card p-5">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+                <i data-lucide="usb" class="h-5 w-5 text-primary"></i>
+              </div>
+              <div>
+                <p class="text-xs uppercase tracking-wider text-muted-foreground">Almacenamiento USB</p>
+                <p class="font-semibold" x-text="system?.almacenamiento_usb?.uso_porcentaje + ' usado'"></p>
+              </div>
+            </div>
+            <div class="metric-bar mb-3">
+              <span :style="`width: ${pct(system?.almacenamiento_usb?.uso_porcentaje)}%`"></span>
+            </div>
+            <div class="flex justify-between text-xs text-muted-foreground">
+              <span>Libre: <strong class="text-foreground" x-text="system?.almacenamiento_usb?.libre_gb + ' GB'"></strong></span>
+              <span>Total: <strong class="text-foreground" x-text="system?.almacenamiento_usb?.total_gb + ' GB'"></strong></span>
+            </div>
+          </div>
+
+        </div>
+        <!--<p class="text-xs text-muted-foreground" x-show="system">Auto-refresco cada 5 s · GET <code>/sistema/estado</code></p> -->
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ============ MODALES ============ -->
+  <div x-show="modal.show" x-transition.opacity
+       class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+       @click.self="cerrarModal()">
+
+    <!-- Modal: Editar dispositivo -->
+    <div x-show="modal.type === 'editar'"
+         class="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-xl mx-4">
+      <h2 class="text-lg font-bold mb-4">Editar dispositivo</h2>
+      <div class="space-y-4">
+        <div>
+          <label class="text-sm text-muted-foreground mb-1 block">Nombre</label>
+          <input x-model="modal.data.nombreEdit" type="text"
+                 class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:border-primary" />
+        </div>
+        <div>
+          <label class="text-sm text-muted-foreground mb-1 block">Ubicación / Habitación</label>
+          <input x-model="modal.data.roomEdit" type="text"
+                 class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:border-primary" />
+        </div>
+      </div>
+      <div class="flex justify-end gap-3 mt-6">
+        <button @click="cerrarModal()"
+                class="rounded-lg border border-border px-4 py-2 text-sm hover:border-primary/50 transition-colors">
+          Cancelar
+        </button>
+        <button @click="guardarEdicion()"
+                class="rounded-lg bg-gradient-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:glow-primary transition-all">
+          Guardar
+        </button>
+      </div>
+    </div>
+
+    <!-- Modal: Vincular dispositivo -->
+    <div x-show="modal.type === 'vincular'"
+         class="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-xl mx-4">
+      <h2 class="text-lg font-bold mb-1">Vincular dispositivo</h2>
+      <p class="text-sm text-muted-foreground mb-6">Ingresa este código en el portal del ESP al configurarlo.</p>
+
+      <div x-show="modal.data.cargando" class="flex justify-center py-6 text-muted-foreground text-sm">
+        <i data-lucide="loader-2" class="h-5 w-5 mr-2 animate-spin"></i> Generando…
+      </div>
+
+      <div x-show="!modal.data.cargando && modal.data.codigo" class="text-center space-y-3">
+        <p class="text-6xl font-bold tracking-widest text-primary glow-primary" x-text="modal.data.codigo"></p>
+        <p class="text-xs text-muted-foreground">
+          Expira: <span x-text="modal.data.expira ? new Date(modal.data.expira).toLocaleTimeString() : ''"></span>
+        </p>
+        <button @click="generarCodigo()"
+                class="text-xs text-primary underline">
+          Generar nuevo código
+        </button>
+      </div>
+
+      <div class="flex justify-end mt-6">
+        <button @click="cerrarModal()"
+                class="rounded-lg border border-border px-4 py-2 text-sm hover:border-primary/50 transition-colors">
+          Cerrar
+        </button>
+      </div>
+    </div>
+
+    <!-- Modal: Nueva regla -->
+    <div x-show="modal.type === 'regla'"
+         class="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-xl mx-4">
+      <h2 class="text-lg font-bold mb-4">Nueva regla</h2>
+      <div class="space-y-4">
+        <div>
+          <label class="text-sm text-muted-foreground mb-1 block">Nombre</label>
+          <input x-model="modal.data.nombre" type="text"
+                 class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:border-primary" />
+        </div>
+        <div class="grid grid-cols-3 gap-3">
+          <div class="col-span-3">
+            <label class="text-sm text-muted-foreground mb-1 block">SI sensor</label>
+            <select x-model="modal.data.sensor_id"
+                    class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:border-primary">
+              <option value="">Seleccionar…</option>
+              <template x-for="s in $store ? [] : []"><!-- poblado por store.sensores -->
+                <option :value="s.id" x-text="s.nombre || s.tipo"></option>
+              </template>
+              <template x-for="s in Store.sensores" :key="s.id">
+                <option :value="s.id" x-text="s.name || s.kind"></option>
+              </template>
+            </select>
+          </div>
+          <div>
+            <label class="text-sm text-muted-foreground mb-1 block">Operador</label>
+            <select x-model="modal.data.operador"
+                    class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:border-primary">
+              <option>></option>
+              <option><</option>
+              <option>==</option>
+              <option>!=</option>
+            </select>
+          </div>
+          <div class="col-span-2">
+            <label class="text-sm text-muted-foreground mb-1 block">Valor umbral</label>
+            <input x-model.number="modal.data.umbral" type="number"
+                   class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:border-primary" />
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-sm text-muted-foreground mb-1 block">ENTONCES actuador</label>
+            <select x-model="modal.data.actuador_id"
+                    class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:border-primary">
+              <option value="">Seleccionar…</option>
+              <template x-for="a in Store.actuadores" :key="a.id">
+                <option :value="a.id" x-text="a.name || a.kind"></option>
+              </template>
+            </select>
+          </div>
+          <div>
+            <label class="text-sm text-muted-foreground mb-1 block">Acción</label>
+            <select x-model="modal.data.accion"
+                    class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:border-primary">
+              <option value="on">ON</option>
+              <option value="off">OFF</option>
+              <option value="toggle">TOGGLE</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="flex justify-end gap-3 mt-6">
+        <button @click="cerrarModal()"
+                class="rounded-lg border border-border px-4 py-2 text-sm hover:border-primary/50 transition-colors">
+          Cancelar
+        </button>
+        <button @click="guardarRegla()"
+                class="rounded-lg bg-gradient-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:glow-primary transition-all">
+          Crear regla
+        </button>
+      </div>
+    </div>
+
+    <!-- Modal: Nueva escena -->
+    <div x-show="modal.type === 'escena'"
+         class="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-xl mx-4">
+      <h2 class="text-lg font-bold mb-4">Nueva escena</h2>
+      <div class="space-y-4">
+        <div>
+          <label class="text-sm text-muted-foreground mb-1 block">Nombre</label>
+          <input x-model="modal.data.nombre" type="text"
+                 class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:border-primary" />
+        </div>
+        <div>
+          <label class="text-sm text-muted-foreground mb-1 block">Disparador</label>
+          <select x-model="modal.data.disparador"
+                  class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:border-primary">
+            <option value="manual">Manual</option>
+            <option value="hora">Por hora</option>
+          </select>
+        </div>
+        <div x-show="modal.data.disparador === 'hora'">
+          <label class="text-sm text-muted-foreground mb-1 block">Hora (HH:MM)</label>
+          <input x-model="modal.data.disparador" type="time"
+                 class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:border-primary" />
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-sm text-muted-foreground mb-1 block">Actuador</label>
+            <select x-model="modal.data.actuador_id"
+                    class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:border-primary">
+              <option value="">Seleccionar…</option>
+              <template x-for="a in Store.actuadores" :key="a.id">
+                <option :value="a.id" x-text="a.name || a.kind"></option>
+              </template>
+            </select>
+          </div>
+          <div>
+            <label class="text-sm text-muted-foreground mb-1 block">Acción</label>
+            <select x-model="modal.data.accion"
+                    class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:border-primary">
+              <option value="on">ON</option>
+              <option value="off">OFF</option>
+              <option value="toggle">TOGGLE</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div class="flex justify-end gap-3 mt-6">
+        <button @click="cerrarModal()"
+                class="rounded-lg border border-border px-4 py-2 text-sm hover:border-primary/50 transition-colors">
+          Cancelar
+        </button>
+        <button @click="guardarEscena()"
+                class="rounded-lg bg-gradient-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:glow-primary transition-all">
+          Crear escena
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ============ TOAST ============ -->
+  <div x-show="toast.show" x-transition
+       class="fixed bottom-6 right-6 rounded-lg border border-border bg-card px-4 py-3 shadow-lg"
+       :class="toast.type === 'error' ? 'border-red-500/50' : 'glow-primary'"
+       x-cloak>
+    <p class="text-sm" x-text="toast.message"></p>
+  </div>
+
+</body>
+</html>
