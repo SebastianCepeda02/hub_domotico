@@ -119,12 +119,13 @@ async def manejador_global(request: Request, exc: Exception):
 # ── Dependencia global de API Key ─────────────────────────────────────────────
 
 app.include_router(vincular_router)  # vinculación sin API key — es pública
+app.include_router(sistema_router)
+app.include_router(actuadores_router)
+app.include_router(dashboard_router)
 app.include_router(dispositivos_router,    dependencies=[Depends(verificar_api_key)])
 app.include_router(sensores_router,        dependencies=[Depends(verificar_api_key)])
-app.include_router(actuadores_router,      dependencies=[Depends(verificar_api_key)])
 app.include_router(automatizaciones_router, dependencies=[Depends(verificar_api_key)])
-app.include_router(dashboard_router,       dependencies=[Depends(verificar_api_key)])
-app.include_router(sistema_router,         dependencies=[Depends(verificar_api_key)])
+
 
 
 # ── Raíz ──────────────────────────────────────────────────────────────────────

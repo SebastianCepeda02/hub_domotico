@@ -4,23 +4,19 @@
 
 const API_BASE = "https://api.domotic-dev.online";
 //const API_BASE = "http://127.0.0.1:8000";
-const API_KEY  = "tu-clave-secreta-123"; // idealmente desde un .env o config
+const API_KEY  = "";
 
-async function request(path, options = {}) {
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: {
-      "Content-Type": "application/json",
-      "X-API-Key": API_KEY,
-      ...(options.headers || {}),
-    },
-    ...options,
-  });
-
+async function request(path, options = {}, useApiKey = true) {
+  const headers = {
+    "Content-Type": "application/json",
+    ...(useApiKey ? { "X-API-Key": API_KEY } : {}),
+    ...(options.headers || {}),
+  };
+  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
   if (!res.ok) {
     const error = await res.json().catch(() => ({}));
     throw new Error(error.detail || `Error ${res.status}`);
   }
-
   return res.json();
 }
 
@@ -29,7 +25,7 @@ async function request(path, options = {}) {
 const Api = {
 
   dashboard: {
-    get: () => request("/dashboard/"),
+    get: () => request("/dashboard/", {}, false),
   },
 
   // ── Dispositivos ─────────────────────────────────────────────────────────────
@@ -57,8 +53,8 @@ const Api = {
     list:   ()            => request("/actuadores/"),
     get:    (id)          => request(`/actuadores/${id}`),
     update: (id, datos)   => request(`/actuadores/${id}`,         { method: "PATCH", body: JSON.stringify(datos) }),
-    estado: (id, estado)  => request(`/actuadores/${id}/estado`,  { method: "PUT",   body: JSON.stringify({ estado }) }),
-    toggleFavorito: (id) => request(`/sensores/${id}/favorito`, { method: "PATCH" }),
+    estado: (id, estado)  => request(`/actuadores/${id}/estado`,  { method: "PUT",   body: JSON.stringify({ estado }) }, false),
+    toggleFavorito: (id) => request(`/actuadores/${id}/favorito`, { method: "PATCH" }),
   },
 
   // ── Automatizaciones — Reglas ─────────────────────────────────────────────────

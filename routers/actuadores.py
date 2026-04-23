@@ -36,6 +36,14 @@ def detalle_actuador(id: int, db=Depends(get_db)):
     if not actuador:
         raise HTTPException(status_code=404, detail="Actuador no encontrado")
 
+    # actualizar ultimo_contacto del dispositivo
+    ahora = datetime.now().isoformat()
+    db.execute(
+        "UPDATE dispositivos SET ultimo_contacto = ? WHERE id = ?",
+        (ahora, actuador["dispositivo_id"])
+    )
+    db.commit()
+
     return dict(actuador)
 
 
@@ -54,7 +62,7 @@ def editar_actuador(id: int, datos: EditarActuador, db=Depends(get_db)):
 
 @router.patch("/{id}/favorito")
 def toggle_favorito(id: int, db=Depends(get_db)):
-    tabla = "sensores"  # cambia por "actuadores" en actuadores.py
+    tabla = "actuadores"  
     fila  = db.execute(f"SELECT favorito FROM {tabla} WHERE id = ?", (id,)).fetchone()
     if not fila:
         raise HTTPException(status_code=404, detail="No encontrado")
