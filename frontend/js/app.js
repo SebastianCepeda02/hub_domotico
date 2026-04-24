@@ -140,7 +140,7 @@ function domoHub() {
     async toggleActuador(id) {
       try {
         await globalStore.toggleActuador(id);
-        const item = globalStore.dashboard.find(d => d.id === id);
+        const item = globalStore.dashboard.find(d => d.id === id && d.category === "actuador");
         this.notify(`${item?.name} → ${item?.on ? 'ON' : 'OFF'}`);
       } catch (e) {
         this.notify('Error al cambiar estado', 'error');

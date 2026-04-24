@@ -2,19 +2,21 @@
 // DomoHub — capa de comunicación con el backend
 // ============================================================
 
-const API_BASE = "https://api.domotic-dev.online";
+
 //const API_BASE = "http://127.0.0.1:8000";
-const API_KEY  = "tu-clave-secreta-123";
+//const API_KEY  = "tu-clave-secreta-123";
+const API_BASE = "https://api.domotic-dev.online";
 
 async function request(path, options = {}) {
   const res = await fetch(`${API_BASE}${path}`, {
     headers: {
       "Content-Type": "application/json",
-      "X-API-Key": API_KEY,
       ...(options.headers || {}),
     },
+    credentials: "include",  // ← necesario para enviar la cookie
     ...options,
   });
+
   if (!res.ok) {
     const error = await res.json().catch(() => ({}));
     throw new Error(error.detail || `Error ${res.status}`);

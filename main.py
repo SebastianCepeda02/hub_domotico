@@ -40,7 +40,8 @@ from routers.automatizaciones import router as automatizaciones_router
 from routers.dashboard       import router as dashboard_router
 from routers.sistema         import router as sistema_router
 from routers.auth import router as auth_router
-
+from starlette.datastructures import Headers
+import os
 
 # ── Cron job de escenas ───────────────────────────────────────────────────────
 
@@ -106,6 +107,7 @@ app.mount("/app", StaticFiles(directory="/mnt/mi_usb/hub_domotico/frontend", htm
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # en producción cambia por tu dominio
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -137,11 +139,40 @@ async def auth_middleware(request: Request, call_next):
 
     return await call_next(request)
 
+###############################################################################################3
+@app.middleware("http")
+async def inyectar_api_key(request: Request, call_next):
+    rutas_frontend = [
+        "/dashboard/",
+        "/sistema/",
+        "/actuadores/",
+        "/dispositivos/",
+        "/sensores/",
+        "/automatizaciones/",
+        "/vincular/codigo",
+        "/auth/",
+    ]
 
-# y agrega el router de auth
-from routers.auth import router as auth_router
-app.include_router(auth_router)
+    path = request.url.path
 
+    # solo inyectar si viene del frontend (tiene cookie válida) y no trae key
+    tiene_key    = request.headers.get("x-api-key")
+    tiene_cookie = request.cookies.get(COOKIE_NAME)
+
+    if not tiene_key and tiene_cookie and any(path.startswith(r) for r in rutas_frontend):
+        from routers.auth import verificar_token
+        if verificar_token(tiene_cookie):
+            headers_dict = dict(request.headers)
+            headers_dict["x-api-key"] = os.getenv("HUB_API_KEY", "")
+            scope          = request.scope
+            scope["headers"] = [
+                (k.lower().encode(), v.encode())
+                for k, v in headers_dict.items()
+            ]
+            request = Request(scope, request.receive)
+
+    return await call_next(request)
+######################################################################################3
 # ── Manejador global de errores ───────────────────────────────────────────────
 
 @app.exception_handler(Exception)
@@ -155,9 +186,9 @@ async def manejador_global(request: Request, exc: Exception):
 # ── Dependencia global de API Key ─────────────────────────────────────────────
 
 app.include_router(vincular_router)  # vinculación sin API key — es pública
-
+app.include_router(auth_router)
 app.include_router(sistema_router,    dependencies=[Depends(verificar_api_key)])
-app.include_router(actuadores_router)
+app.include_router(actuadores_router,    dependencies=[Depends(verificar_api_key)])
 app.include_router(dashboard_router,    dependencies=[Depends(verificar_api_key)])
 app.include_router(dispositivos_router,    dependencies=[Depends(verificar_api_key)])
 app.include_router(sensores_router,        dependencies=[Depends(verificar_api_key)])

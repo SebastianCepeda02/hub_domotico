@@ -64,19 +64,29 @@ async def proxy_stream(id: int, db=Depends(get_db)):
 
     stream_url = actuador["stream_url"]
     if not stream_url:
-        raise HTTPException(status_code=404, detail="Este actuador no tiene stream_url")
+        raise HTTPException(status_code=404, detail="Sin stream_url")
+
+    # actualizar ultimo_contacto al recibir petición de stream
+    ahora = datetime.now().isoformat()
+    db.execute(
+        "UPDATE dispositivos SET ultimo_contacto = ? WHERE id = ?",
+        (ahora, actuador["dispositivo_id"])
+    )
+    db.commit()
 
     async def generador():
-        async with httpx.AsyncClient(timeout=None) as client:
-            async with client.stream("GET", stream_url) as response:
-                async for chunk in response.aiter_bytes(1024):
-                    yield chunk
+        try:
+            async with httpx.AsyncClient(timeout=None) as client:
+                async with client.stream("GET", stream_url) as response:
+                    async for chunk in response.aiter_bytes(1024):
+                        yield chunk
+        except httpx.ConnectError:
+            yield b""
 
     return StreamingResponse(
         generador(),
         media_type="multipart/x-mixed-replace; boundary=frame"
     )
-
 
 # ── PATCH /actuadores/{id} ─────────────────────────────────────────────────────
 
