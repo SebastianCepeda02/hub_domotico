@@ -285,7 +285,6 @@ const Store = {
       const res = category === 'sensor'
         ? await Api.sensores.toggleFavorito(id)
         : await Api.actuadores.toggleFavorito(id);
-      console.log("[favorito]", res);
       const item = globalStore.dashboard.find(d => d.id === id && d.category === category);
       if (item) item.favorite = res.favorito; 
     } catch (e) {

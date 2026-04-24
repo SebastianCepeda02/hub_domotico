@@ -25,6 +25,9 @@ from fastapi import FastAPI, Request, Depends
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi import Request
+from fastapi.responses import RedirectResponse
+from routers.auth import verificar_token, COOKIE_NAME
 
 from database import init_db, obtener_conexion
 from dependencies import verificar_api_key
@@ -36,6 +39,7 @@ from routers.actuadores      import router as actuadores_router
 from routers.automatizaciones import router as automatizaciones_router
 from routers.dashboard       import router as dashboard_router
 from routers.sistema         import router as sistema_router
+from routers.auth import router as auth_router
 
 
 # ── Cron job de escenas ───────────────────────────────────────────────────────
@@ -106,6 +110,38 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+
+@app.middleware("http")
+async def auth_middleware(request: Request, call_next):
+    # rutas que no requieren autenticación
+    rutas_publicas = [
+        "/auth/login",
+        "/auth/logout",
+        "/app/login.html",
+        "/app/css/",
+        "/app/js/",
+    ]
+
+    path = request.url.path
+
+    # si es una ruta pública dejar pasar
+    if any(path.startswith(r) for r in rutas_publicas):
+        return await call_next(request)
+
+    # si es una ruta de /app verificar cookie
+    if path.startswith("/app"):
+        token = request.cookies.get(COOKIE_NAME)
+        if not token or not verificar_token(token):
+            return RedirectResponse(url="/app/login.html")
+
+    return await call_next(request)
+
+
+# y agrega el router de auth
+from routers.auth import router as auth_router
+app.include_router(auth_router)
+
 # ── Manejador global de errores ───────────────────────────────────────────────
 
 @app.exception_handler(Exception)
@@ -119,9 +155,10 @@ async def manejador_global(request: Request, exc: Exception):
 # ── Dependencia global de API Key ─────────────────────────────────────────────
 
 app.include_router(vincular_router)  # vinculación sin API key — es pública
-app.include_router(sistema_router)
+
+app.include_router(sistema_router,    dependencies=[Depends(verificar_api_key)])
 app.include_router(actuadores_router)
-app.include_router(dashboard_router)
+app.include_router(dashboard_router,    dependencies=[Depends(verificar_api_key)])
 app.include_router(dispositivos_router,    dependencies=[Depends(verificar_api_key)])
 app.include_router(sensores_router,        dependencies=[Depends(verificar_api_key)])
 app.include_router(automatizaciones_router, dependencies=[Depends(verificar_api_key)])
@@ -154,3 +191,13 @@ def raiz():
 
 #sudo fuser -k 8000/tcp
 #pkill -f uvicorn
+
+
+
+#############################
+
+#sudo nano /etc/systemd/system/hubdomotico.service
+#sudo systemctl daemon-reload
+#sudo systemctl enable hubdomotico
+#sudo systemctl start hubdomotico
+#sudo systemctl status hubdomotico

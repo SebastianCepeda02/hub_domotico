@@ -39,6 +39,18 @@ function domoHub() {
     // ── Init ────────────────────────────────────────────────────────────────────
 
     async init() {
+      try {
+        await fetch('/auth/verificar').then(r => {
+          if (!r.ok) window.location.href = '/app/login.html';
+        });
+      } catch (e) {
+        window.location.href = '/app/login.html';
+      }
+
+      await this.cargarDashboard();
+      globalStore.startSystemPolling();
+      globalStore.startDashboardPolling();
+      
       await this.cargarDashboard();
       globalStore.startSystemPolling();
       globalStore.startDashboardPolling();
@@ -287,6 +299,15 @@ function domoHub() {
       }
     },
 
+    abrirModalCamara(device) {
+      this.modal = { show: true, type: 'camara', data: { ...device } };
+      this.$nextTick(() => lucide.createIcons());
+    },
+
+    cerrarModalCamara() {
+      this.modal = { show: false, type: null, data: {} };
+    },
+
     // ── Vinculación ─────────────────────────────────────────────────────────────
 
     async generarCodigo() {
@@ -300,6 +321,12 @@ function domoHub() {
       } finally {
         this.modal.data.cargando = false;
       }
+    },
+
+    // ── Login ──────────────────────────────────────────────────────────
+    async logout() {
+      await fetch('/auth/logout', { method: 'POST' });
+      window.location.href = '/app/login.html';
     },
 
     // ── Sistema ─────────────────────────────────────────────────────────────────

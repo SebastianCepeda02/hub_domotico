@@ -79,7 +79,8 @@ def obtener_dashboard(db=Depends(get_db)):
                 "lastSeen": last_seen,
                 "category": "actuador",
                 "dispositivo_id": dispositivo["id"],  
-                "favorite":       bool(actuador["favorito"])
+                "favorite":       bool(actuador["favorito"]),
+                "stream_url":   actuador["stream_url"]
             })
 
     return resultado

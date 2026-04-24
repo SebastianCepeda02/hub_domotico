@@ -1,11 +1,12 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Security
+from dependencies import verificar_api_key
 from datetime import datetime
 import os
 
 router = APIRouter(prefix="/sistema", tags=["sistema"])
 
 @router.get("/estado")
-def obtener_estado_completo():
+def obtener_estado_completo(key = Security(verificar_api_key)):
     try:
         temp_raw = os.popen("vcgencmd measure_temp").read().replace("temp=", "").replace("'C", "").strip()
         temperatura = float(temp_raw)

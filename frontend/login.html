@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DomoHub — Login</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root {
+      --primary: 160 84% 55%;
+      --background: 222 47% 6%;
+      --card: 222 40% 9%;
+      --border: 222 30% 18%;
+      --foreground: 160 20% 95%;
+      --muted-foreground: 160 10% 65%;
+    }
+    body {
+      background: hsl(var(--background));
+      color: hsl(var(--foreground));
+      font-family: system-ui, sans-serif;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+  <div class="w-full max-w-sm">
+
+    <!-- Logo -->
+    <div class="flex flex-col items-center mb-8">
+      <div class="flex h-16 w-16 items-center justify-center rounded-2xl mb-4"
+           style="background: linear-gradient(135deg, hsl(160,84%,55%), hsl(175,70%,50%));
+                  box-shadow: 0 0 20px hsl(160 84% 55% / 0.4)">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" viewBox="0 0 24 24"
+             fill="none" stroke="hsl(222,47%,6%)" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+          <polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+      </div>
+      <h1 class="text-2xl font-bold">DomoHub</h1>
+      <p style="color: hsl(var(--muted-foreground))" class="text-sm mt-1">Accede a tu hub domótico</p>
+    </div>
+
+    <!-- Card -->
+    <div class="rounded-2xl p-6"
+         style="background: hsl(var(--card)); border: 1px solid hsl(var(--border))">
+
+      <div id="error" class="hidden mb-4 rounded-lg px-4 py-3 text-sm font-medium"
+           style="background: hsl(0 80% 20%); color: hsl(0 80% 80%)"></div>
+
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm mb-1" style="color: hsl(var(--muted-foreground))">
+            Contraseña
+          </label>
+          <input id="password" type="password" placeholder="••••••••"
+                 class="w-full rounded-lg px-3 py-2 text-sm focus:outline-none"
+                 style="background: hsl(var(--background)); border: 1px solid hsl(var(--border)); color: hsl(var(--foreground))"
+                 onkeydown="if(event.key==='Enter') login()" />
+        </div>
+
+        <button onclick="login()"
+                class="w-full rounded-lg py-2 text-sm font-semibold transition-all"
+                style="background: linear-gradient(135deg, hsl(160,84%,55%), hsl(175,70%,50%));
+                       color: hsl(222,47%,6%)">
+          Entrar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Si ya tiene sesión válida redirigir al dashboard
+    fetch('/auth/verificar')
+      .then(r => { if (r.ok) window.location.href = '/app/'; })
+      .catch(() => {});
+
+    async function login() {
+      const password = document.getElementById('password').value;
+      const error    = document.getElementById('error');
+
+      if (!password) {
+        mostrarError('Ingresa tu contraseña');
+        return;
+      }
+
+      try {
+        const res = await fetch('/auth/login', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ password })
+        });
+
+        if (res.ok) {
+          window.location.href = '/app/';
+        } else {
+          const data = await res.json();
+          mostrarError(data.detail || 'Contraseña incorrecta');
+        }
+      } catch (e) {
+        mostrarError('Error de conexión');
+      }
+    }
+
+    function mostrarError(msg) {
+      const el = document.getElementById('error');
+      el.textContent = msg;
+      el.classList.remove('hidden');
+    }
+  </script>
+
+</body>
+</html>

@@ -68,6 +68,11 @@
                 :class="apiStatus === 'Conectado' ? 'bg-primary glow-primary' : 'bg-red-500'"></span>
           <span x-text="apiStatus"></span>
         </div>
+        <button onclick="logout()"
+                class="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+          <i data-lucide="log-out" class="h-4 w-4"></i>
+          <span x-show="sidebarOpen">Salir</span>
+        </button>
       </header>
 
       <!-- Loading global -->
@@ -83,7 +88,7 @@
           <h2 class="text-3xl font-bold mb-1" x-text="greeting()"></h2>
           <p class="text-muted-foreground">Tu casa en un vistazo</p>
         </div>
-
+        
         <!-- Escenas rápidas -->
         <div x-show="escenas.length > 0">
           <h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Escenas rápidas</h3>
@@ -101,55 +106,80 @@
         </div>
 
         <!-- Dispositivos favoritos por habitación -->
-<template x-for="room in favoriteRooms()" :key="room">
-  <div>
-    <h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3" x-text="room"></h3>
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-      <template x-for="device in devicesByRoom(room).filter(d => d.favorite)" :key="device.id + '-' + device.category">
+        <template x-for="room in favoriteRooms()" :key="room">
+          <div>
+            <h3 class="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3" x-text="room"></h3>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              <template x-for="device in devicesByRoom(room).filter(d => d.favorite)" :key="device.id + '-' + device.category">
 
-        <div class="rounded-xl border border-border bg-card p-4 hover:border-primary/50 transition-colors"
-             :class="!device.online ? 'opacity-50' : ''">
-          <div class="flex items-start justify-between">
-            <div class="flex items-center gap-3">
-              <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
-                <i :data-lucide="iconFor(device.kind)" class="h-5 w-5 text-primary"></i>
-              </div>
-              <div>
-                <p class="font-semibold leading-tight" x-text="device.name"></p>
-                <p class="text-xs text-muted-foreground" x-text="device.room"></p>
-              </div>
+                <div class="rounded-xl border border-border bg-card p-4 hover:border-primary/50 transition-colors"
+                    :class="!device.online ? 'opacity-50' : ''">
+                  <div class="flex items-start justify-between">
+                    <div class="flex items-center gap-3">
+                      <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
+                        <i :data-lucide="iconFor(device.kind)" class="h-5 w-5 text-primary"></i>
+                      </div>
+                      <div>
+                        <p class="font-semibold leading-tight" x-text="device.name"></p>
+                        <p class="text-xs text-muted-foreground" x-text="device.room"></p>
+                      </div>
+                    </div>
+                    <button @click="toggleFavorito(device.id, device.category)"
+                            class="transition-colors ml-1"
+                            :class="device.favorite ? 'text-primary' : 'text-muted-foreground hover:text-primary'">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24"
+                          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                          :fill="device.favorite ? 'currentColor' : 'none'">
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                      </svg>
+                    </button>
+                  </div>
+                  <div x-show="device.category === 'sensor'" class="mt-4">
+                    <p class="text-3xl font-bold text-primary">
+                      <span x-text="device.value ?? '—'"></span>
+                      <span class="text-base text-muted-foreground ml-1" x-text="device.unit || ''"></span>
+                    </p>
+                    <p class="text-xs text-muted-foreground mt-1" x-show="device.lastSeen" x-text="device.lastSeen"></p>
+                  </div>
+                  <div x-show="device.category === 'actuador'" class="flex items-center justify-between mt-4">
+                    <span class="text-sm text-muted-foreground" x-text="device.on ? 'Encendido' : 'Apagado'"></span>
+                    <button @click="toggleActuador(device.id)"
+                            class="toggle-switch"
+                            :class="device.on ? 'is-on' : 'is-off'">
+                      <span class="toggle-knob"></span>
+                    </button>
+                  </div>
+                  <!-- Cámara -->
+                  <div x-show="device.category === 'actuador' && device.kind === 'camera'" class="mt-4">
+                    <button @click="abrirModalCamara(device)"
+                            class="w-full rounded-lg overflow-hidden bg-muted aspect-video relative group">
+                      <img :src="`https://api.domotic-dev.online/actuadores/${device.id}/stream`"
+                          class="w-full h-full object-cover"
+                          :alt="device.name" />
+                      <div class="absolute inset-0 flex items-center justify-center
+                                  bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <i data-lucide="maximize-2" class="h-8 w-8 text-white"></i>
+                      </div>
+                    </button>
+                  </div>
+
+                  <!-- Actuador normal — ocultar si es cámara -->
+                  <div x-show="device.category === 'actuador' && device.kind !== 'camera'"
+                      class="flex items-center justify-between mt-4">
+                    <span class="text-sm text-muted-foreground" x-text="device.on ? 'Encendido' : 'Apagado'"></span>
+                    <button @click="toggleActuador(device.id)"
+                            class="toggle-switch"
+                            :class="device.on ? 'is-on' : 'is-off'">
+                      <span class="toggle-knob"></span>
+                    </button>
+                  </div>
+
+                </div>
+
+              </template>
             </div>
-            <button @click="toggleFavorito(device.id, device.category)"
-                    class="transition-colors ml-1"
-                    :class="device.favorite ? 'text-primary' : 'text-muted-foreground hover:text-primary'">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24"
-                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                  :fill="device.favorite ? 'currentColor' : 'none'">
-                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-              </svg>
-            </button>
           </div>
-          <div x-show="device.category === 'sensor'" class="mt-4">
-            <p class="text-3xl font-bold text-primary">
-              <span x-text="device.value ?? '—'"></span>
-              <span class="text-base text-muted-foreground ml-1" x-text="device.unit || ''"></span>
-            </p>
-            <p class="text-xs text-muted-foreground mt-1" x-show="device.lastSeen" x-text="device.lastSeen"></p>
-          </div>
-          <div x-show="device.category === 'actuador'" class="flex items-center justify-between mt-4">
-            <span class="text-sm text-muted-foreground" x-text="device.on ? 'Encendido' : 'Apagado'"></span>
-            <button @click="toggleActuador(device.id)"
-                    class="toggle-switch"
-                    :class="device.on ? 'is-on' : 'is-off'">
-              <span class="toggle-knob"></span>
-            </button>
-          </div>
-        </div>
-
-      </template>
-    </div>
-  </div>
-</template>
+        </template>
 
         <p x-show="dashboard.length === 0 && !loading"
            class="text-muted-foreground text-sm">
@@ -229,6 +259,33 @@
                 </button>
               </div>
 
+              <!-- Cámara -->
+              <div x-show="device.category === 'actuador' && device.kind === 'camera'" class="mt-4">
+                <button @click="abrirModalCamara(device)"
+                        class="w-full rounded-lg overflow-hidden bg-muted aspect-video relative group">
+                  <img :src="`https://api.domotic-dev.online/actuadores/${device.id}/stream`"
+                      class="w-full h-full object-cover"
+                      :alt="device.name" />
+                  <div class="absolute inset-0 flex items-center justify-center
+                              bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <i data-lucide="maximize-2" class="h-8 w-8 text-white"></i>
+                  </div>
+                </button>
+              </div>
+
+              <!-- Actuador normal — ocultar si es cámara -->
+              <div x-show="device.category === 'actuador' && device.kind !== 'camera'"
+                  class="flex items-center justify-between mt-4">
+                <span class="text-sm text-muted-foreground" x-text="device.on ? 'Encendido' : 'Apagado'"></span>
+                <button @click="toggleActuador(device.id)"
+                        class="toggle-switch"
+                        :class="device.on ? 'is-on' : 'is-off'">
+                  <span class="toggle-knob"></span>
+                </button>
+              </div>
+
+
+
               <p x-show="!device.online" class="text-xs text-muted-foreground mt-2">Sin conexión</p>
             </div>
 
@@ -283,7 +340,7 @@
                     <span x-text="`${regla.sensor_nombre || 'sensor'} ${regla.operador} ${regla.umbral}`"></span>
                   </div>
                   <div class="flex items-center gap-2">
-                    <span class="text-xs font-bold text-accent">THEN</span>
+                    <span class="text-xs font-bold text-accent">ENTONCES</span>
                     <span x-text="`${regla.actuador_nombre || 'actuador'} → ${regla.accion.toUpperCase()}`"></span>
                   </div>
                 </div>
@@ -337,7 +394,7 @@
                   </div>
                 </div>
                 <div class="flex items-center gap-2 text-sm">
-                  <span class="text-xs font-bold text-accent">THEN</span>
+                  <span class="text-xs font-bold text-accent">ENTONCES</span>
                   <span x-text="`${escena.actuador_nombre || 'actuador'} → ${escena.accion.toUpperCase()}`"></span>
                 </div>
               </div>
@@ -542,10 +599,7 @@
             <select x-model="modal.data.sensor_id"
                     class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:border-primary">
               <option value="">Seleccionar…</option>
-              <template x-for="s in $store ? [] : []"><!-- poblado por store.sensores -->
-                <option :value="s.id" x-text="s.nombre || s.tipo"></option>
-              </template>
-              <template x-for="s in Store.sensores" :key="s.id">
+              <template x-for="s in globalStore.sensores" :key="s.id">
                 <option :value="s.id" x-text="s.name || s.kind"></option>
               </template>
             </select>
@@ -572,7 +626,7 @@
             <select x-model="modal.data.actuador_id"
                     class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:border-primary">
               <option value="">Seleccionar…</option>
-              <template x-for="a in Store.actuadores" :key="a.id">
+              <template x-for="a in globalStore.actuadores" :key="a.id">
                 <option :value="a.id" x-text="a.name || a.kind"></option>
               </template>
             </select>
@@ -629,7 +683,7 @@
             <select x-model="modal.data.actuador_id"
                     class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:border-primary">
               <option value="">Seleccionar…</option>
-              <template x-for="a in Store.actuadores" :key="a.id">
+              <template x-for="a in globalStore.actuadores" :key="a.id">
                 <option :value="a.id" x-text="a.name || a.kind"></option>
               </template>
             </select>
@@ -654,6 +708,42 @@
                 class="rounded-lg bg-gradient-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:glow-primary transition-all">
           Crear escena
         </button>
+      </div>
+    </div>
+
+    <!-- Modal: Cámara -->
+    <div x-show="modal.type === 'camara'"
+        class="w-full max-w-3xl rounded-2xl border border-border bg-card shadow-xl mx-4 overflow-hidden">
+      <div class="flex items-center justify-between px-5 py-4 border-b border-border">
+        <div>
+          <h2 class="text-lg font-bold" x-text="modal.data.name"></h2>
+          <p class="text-xs text-muted-foreground" x-text="modal.data.room"></p>
+        </div>
+        <button @click="cerrarModalCamara()"
+                class="text-muted-foreground hover:text-foreground transition-colors">
+          <i data-lucide="x" class="h-5 w-5"></i>
+        </button>
+      </div>
+      <div class="bg-black aspect-video">
+        <img x-show="modal.type === 'camara'"
+            :src="modal.type === 'camara'
+                  ? `https://api.domotic-dev.online/actuadores/${modal.data.id}/stream`
+                  : ''"
+            class="w-full h-full object-contain"
+            :alt="modal.data.name" />
+      </div>
+      <div class="flex items-center justify-between px-5 py-4">
+        <div class="flex items-center gap-2 text-sm text-muted-foreground">
+          <span class="h-2 w-2 rounded-full"
+                :class="modal.data.online ? 'bg-primary glow-primary' : 'bg-red-500'"></span>
+          <span x-text="modal.data.online ? 'En línea' : 'Sin conexión'"></span>
+        </div>
+        <a :href="`https://api.domotic-dev.online/actuadores/${modal.data.id}/stream`"
+          target="_blank"
+          class="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors">
+          <i data-lucide="external-link" class="h-4 w-4"></i>
+          Abrir en nueva pestaña
+        </a>
       </div>
     </div>
 
