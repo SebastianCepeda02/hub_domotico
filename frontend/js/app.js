@@ -191,6 +191,7 @@ function domoHub() {
     },
 
     async eliminarDispositivo(id) {
+      if (!confirm('¿Seguro que quieres desvincular este dispositivo? Se eliminarán todos sus sensores y actuadores.')) return;
       try {
         await globalStore.eliminarDispositivo(id);
         this.cerrarModal();

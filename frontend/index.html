@@ -68,7 +68,7 @@
                 :class="apiStatus === 'Conectado' ? 'bg-primary glow-primary' : 'bg-red-500'"></span>
           <span x-text="apiStatus"></span>
         </div>
-        <button onclick="logout()"
+        <button @click="logout()"
                 class="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
           <i data-lucide="log-out" class="h-4 w-4"></i>
           <span x-show="sidebarOpen">Salir</span>
@@ -519,6 +519,16 @@
     <!-- Modal: Editar dispositivo -->
     <div x-show="modal.type === 'editar'"
          class="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-xl mx-4">
+
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-bold">Editar dispositivo</h2>
+        <button @click="eliminarDispositivo(modal.data.dispositivo_id)"
+                class="flex items-center gap-1 text-sm text-muted-foreground hover:text-red-400 transition-colors">
+          <i data-lucide="trash-2" class="h-4 w-4"></i>
+          <span>Eliminar</span>
+        </button>
+      </div>
+
       <h2 class="text-lg font-bold mb-4">Editar dispositivo</h2>
       <div class="space-y-4">
         <div>
