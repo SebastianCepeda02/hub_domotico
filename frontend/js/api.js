@@ -57,7 +57,6 @@ const Api = {
   actuadores: {
     list:   ()            => request("/actuadores/"),
     get:    (id)          => request(`/actuadores/${id}`),
-    //getStreamUrl:    (id)          => request(`/actuadores/${id}/stream`),
     update: (id, datos)   => request(`/actuadores/${id}`,         { method: "PATCH", body: JSON.stringify(datos) }),
     estado: (id, estado)  => request(`/actuadores/${id}/estado`,  { method: "PUT",   body: JSON.stringify({ estado }) }),
     toggleFavorito: (id) => request(`/actuadores/${id}/favorito`, { method: "PATCH" }),

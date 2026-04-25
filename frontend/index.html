@@ -529,7 +529,6 @@
         </button>
       </div>
 
-      <h2 class="text-lg font-bold mb-4">Editar dispositivo</h2>
       <div class="space-y-4">
         <div>
           <label class="text-sm text-muted-foreground mb-1 block">Nombre</label>
@@ -727,11 +726,10 @@
 
       <div class="bg-black aspect-video relative">
         <img x-show="modal.type === 'camara' && modal.data.online"
-            :src="modal.type === 'camara'
-                  ? `https://api.domotic-dev.online/actuadores/${modal.data.id}/stream`
-                  : ''"
+            :src="modal.type === 'camara'? `https://api.domotic-dev.online/actuadores/${modal.data.id}/stream`: ''"
             class="w-full h-full object-contain"
-            :alt="modal.data.name" />
+            :alt="modal.data.name"
+            @error="modal.data.online = false" />
         <div x-show="!modal.data.online"
             class="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground gap-2">
           <i data-lucide="video-off" class="h-10 w-10"></i>

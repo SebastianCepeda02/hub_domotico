@@ -66,14 +66,6 @@ async def proxy_stream(id: int, db=Depends(get_db)):
     if not stream_url:
         raise HTTPException(status_code=404, detail="Sin stream_url")
 
-    # actualizar ultimo_contacto al recibir petición de stream
-    ahora = datetime.now().isoformat()
-    db.execute(
-        "UPDATE dispositivos SET ultimo_contacto = ? WHERE id = ?",
-        (ahora, actuador["dispositivo_id"])
-    )
-    db.commit()
-
     async def generador():
         try:
             async with httpx.AsyncClient(timeout=None) as client:
