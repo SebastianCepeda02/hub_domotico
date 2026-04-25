@@ -51,10 +51,6 @@ function domoHub() {
       globalStore.startSystemPolling();
       globalStore.startDashboardPolling();
       
-      await this.cargarDashboard();
-      globalStore.startSystemPolling();
-      globalStore.startDashboardPolling();
-      
       this.$watch('page', (p) => {
         this.$nextTick(() => lucide.createIcons());
         if (p === 'system')      { globalStore.startSystemPolling(); }
@@ -247,10 +243,11 @@ function domoHub() {
         show: true,
         type: 'escena',
         data: {
-          nombre:      '',
-          disparador:  'manual',
-          actuador_id: null,
-          accion:      'on',
+          nombre:           '',
+          tipo_disparador:  'manual',  // controla el select
+          hora:             '',        // controla el input time
+          actuador_id:      null,
+          accion:           'on',
         }
       };
       this.$nextTick(() => lucide.createIcons());
@@ -291,8 +288,14 @@ function domoHub() {
     },
 
     async guardarEscena() {
+      const { nombre, tipo_disparador, hora, actuador_id, accion } = this.modal.data;
+      const disparador = tipo_disparador === 'hora' ? hora : 'manual';
+      if (tipo_disparador === 'hora' && !hora) {
+        this.notify('Ingresa la hora', 'error');
+        return;
+      }
       try {
-        await globalStore.crearEscena(this.modal.data);
+        await globalStore.crearEscena({ nombre, disparador, actuador_id, accion });
         this.cerrarModal();
         this.notify('Escena creada');
       } catch (e) {
@@ -301,7 +304,8 @@ function domoHub() {
     },
 
     abrirModalCamara(device) {
-      this.modal = { show: true, type: 'camara', data: { ...device } };
+      // Forzar online=true: la imagen intentará cargar y @error lo pondrá false si falla
+      this.modal = { show: true, type: 'camara', data: { ...device, online: true } };
       this.$nextTick(() => lucide.createIcons());
     },
 

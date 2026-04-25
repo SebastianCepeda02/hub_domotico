@@ -10,8 +10,9 @@
 
 // ─── Configuración del hub ────────────────────────────────────────────────────
 #define HUB_URL   "https://api.domotic-dev.online"
+#define WS_HOST   "api.domotic-dev.online"
+#define WS_PORT   443
 #define API_KEY   "tu-clave-secreta-123"
-#define CAM_PORT  81
 
 // ─── Configuración guardada en NVS ───────────────────────────────────────────
 struct ConfigCam {

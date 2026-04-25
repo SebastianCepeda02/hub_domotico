@@ -112,8 +112,9 @@ const Store = {
 
   async crearRegla(datos) {
     try {
-      const nueva = await Api.reglas.create(datos);
-      this.reglas.push(nueva);
+      await Api.reglas.create(datos);
+      // Recargar para obtener sensor_nombre y actuador_nombre del JOIN
+      this.reglas = await Api.reglas.list();
     } catch (e) {
       console.error("[store] crearRegla:", e.message);
       throw e;
@@ -169,8 +170,9 @@ const Store = {
 
   async crearEscena(datos) {
     try {
-      const nueva = await Api.escenas.create(datos);
-      this.escenas.push(nueva);
+      await Api.escenas.create(datos);
+      // Recargar para obtener actuador_nombre del JOIN
+      this.escenas = await Api.escenas.list();
     } catch (e) {
       console.error("[store] crearEscena:", e.message);
       throw e;
@@ -237,9 +239,8 @@ const Store = {
         this.dashboard.splice(0, this.dashboard.length, ...data);
       } catch (e) {
         console.error("[poll] dashboard:", e.message);
-        // no lanza — el polling falla silenciosamente
       }
-    }, 30000);
+    }, 10000);
   },
 
   stopDashboardPolling() {

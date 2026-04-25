@@ -32,14 +32,16 @@ from routers.auth import verificar_token, COOKIE_NAME
 from database import init_db, obtener_conexion
 from dependencies import verificar_api_key
 
-from routers.vincular        import router as vincular_router
-from routers.dispositivos    import router as dispositivos_router
-from routers.sensores        import router as sensores_router
-from routers.actuadores      import router as actuadores_router
-from routers.automatizaciones import router as automatizaciones_router
-from routers.dashboard       import router as dashboard_router
-from routers.sistema         import router as sistema_router
-from routers.auth import router as auth_router
+from routers.vincular          import router as vincular_router
+from routers.dispositivos      import router as dispositivos_router
+from routers.sensores          import router as sensores_router
+from routers.actuadores        import router as actuadores_router
+from routers.automatizaciones  import router as automatizaciones_router
+from routers.dashboard         import router as dashboard_router
+from routers.sistema           import router as sistema_router
+from routers.auth              import router as auth_router
+from routers.ws_dispositivos   import router as ws_dispositivos_router
+from routers.camara_ws         import router as camara_ws_router
 from starlette.datastructures import Headers
 import os
 
@@ -123,6 +125,9 @@ async def auth_middleware(request: Request, call_next):
         "/app/login.html",
         "/app/css/",
         "/app/js/",
+        "/ws/dispositivo/",   # autenticadas por api_key query param
+        "/ws/camera/",        # publish: api_key query param | view: cookie verificada en el endpoint
+        "/vincular/",
     ]
 
     path = request.url.path
@@ -185,14 +190,16 @@ async def manejador_global(request: Request, exc: Exception):
 
 # ── Dependencia global de API Key ─────────────────────────────────────────────
 
-app.include_router(vincular_router)  # vinculación sin API key — es pública
+app.include_router(vincular_router)           # pública
 app.include_router(auth_router)
-app.include_router(sistema_router,    dependencies=[Depends(verificar_api_key)])
-app.include_router(actuadores_router,    dependencies=[Depends(verificar_api_key)])
-app.include_router(dashboard_router,    dependencies=[Depends(verificar_api_key)])
-app.include_router(dispositivos_router,    dependencies=[Depends(verificar_api_key)])
-app.include_router(sensores_router,        dependencies=[Depends(verificar_api_key)])
-app.include_router(automatizaciones_router, dependencies=[Depends(verificar_api_key)])
+app.include_router(ws_dispositivos_router)    # autenticación por api_key query param
+app.include_router(camara_ws_router)          # autenticación por api_key / cookie en el endpoint
+app.include_router(sistema_router,             dependencies=[Depends(verificar_api_key)])
+app.include_router(actuadores_router,          dependencies=[Depends(verificar_api_key)])
+app.include_router(dashboard_router,           dependencies=[Depends(verificar_api_key)])
+app.include_router(dispositivos_router,        dependencies=[Depends(verificar_api_key)])
+app.include_router(sensores_router,            dependencies=[Depends(verificar_api_key)])
+app.include_router(automatizaciones_router,    dependencies=[Depends(verificar_api_key)])
 
 
 

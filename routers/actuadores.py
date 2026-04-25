@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from database import get_db
 import httpx
 from fastapi.responses import StreamingResponse
+from routers.ws_dispositivos import notificar_estado_actuador
 
 router = APIRouter(prefix="/actuadores", tags=["Actuadores"])
 
@@ -122,7 +123,7 @@ def toggle_favorito(id: int, db=Depends(get_db)):
 # ── PUT /actuadores/{id}/estado ────────────────────────────────────────────────
 
 @router.put("/{id}/estado")
-def cambiar_estado(id: int, datos: CambiarEstado, db=Depends(get_db)):
+async def cambiar_estado(id: int, datos: CambiarEstado, db=Depends(get_db)):
     actuador = db.execute("SELECT * FROM actuadores WHERE id = ?", (id,)).fetchone()
 
     if not actuador:
@@ -142,6 +143,9 @@ def cambiar_estado(id: int, datos: CambiarEstado, db=Depends(get_db)):
         (nuevo_estado, ahora, id)
     )
     db.commit()
+
+    # Notificar al dispositivo ESP32 si está conectado por WebSocket
+    await notificar_estado_actuador(id, nuevo_estado)
 
     return {
         **dict(actuador),

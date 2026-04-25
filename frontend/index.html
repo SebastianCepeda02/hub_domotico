@@ -327,11 +327,11 @@
                 <div class="space-y-2 text-sm">
                   <div class="flex items-center gap-2">
                     <span class="text-xs font-bold text-primary">SI</span>
-                    <span x-text="`${regla.sensor_nombre || 'sensor'} ${regla.operador} ${regla.umbral}`"></span>
+                    <span x-text="`${regla.sensor_nombre || regla.sensor_tipo || 'sensor #' + regla.sensor_id} ${regla.operador} ${regla.umbral}`"></span>
                   </div>
                   <div class="flex items-center gap-2">
                     <span class="text-xs font-bold text-accent">ENTONCES</span>
-                    <span x-text="`${regla.actuador_nombre || 'actuador'} → ${regla.accion.toUpperCase()}`"></span>
+                    <span x-text="`${regla.actuador_nombre || regla.actuador_tipo || 'actuador #' + regla.actuador_id} → ${regla.accion.toUpperCase()}`"></span>
                   </div>
                 </div>
               </div>
@@ -385,7 +385,7 @@
                 </div>
                 <div class="flex items-center gap-2 text-sm">
                   <span class="text-xs font-bold text-accent">ENTONCES</span>
-                  <span x-text="`${escena.actuador_nombre || 'actuador'} → ${escena.accion.toUpperCase()}`"></span>
+                  <span x-text="`${escena.actuador_nombre || escena.actuador_tipo || 'actuador #' + escena.actuador_id} → ${escena.accion.toUpperCase()}`"></span>
                 </div>
               </div>
             </template>
@@ -599,7 +599,7 @@
                     class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:border-primary">
               <option value="">Seleccionar…</option>
               <template x-for="s in globalStore.sensores" :key="s.id">
-                <option :value="s.id" x-text="s.name || s.kind"></option>
+                <option :value="s.id" x-text="(s.name || s.kind) + (s.room ? ' — ' + s.room : '')"></option>
               </template>
             </select>
           </div>
@@ -625,8 +625,8 @@
             <select x-model="modal.data.actuador_id"
                     class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:border-primary">
               <option value="">Seleccionar…</option>
-              <template x-for="a in globalStore.actuadores" :key="a.id">
-                <option :value="a.id" x-text="a.name || a.kind"></option>
+              <template x-for="a in globalStore.actuadores.filter(a => a.kind !== 'camera')" :key="a.id">
+                <option :value="a.id" x-text="(a.name || a.kind) + (a.room ? ' — ' + a.room : '')"></option>
               </template>
             </select>
           </div>
@@ -665,15 +665,15 @@
         </div>
         <div>
           <label class="text-sm text-muted-foreground mb-1 block">Disparador</label>
-          <select x-model="modal.data.disparador"
+          <select x-model="modal.data.tipo_disparador"
                   class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:border-primary">
             <option value="manual">Manual</option>
             <option value="hora">Por hora</option>
           </select>
         </div>
-        <div x-show="modal.data.disparador === 'hora'">
-          <label class="text-sm text-muted-foreground mb-1 block">Hora (HH:MM)</label>
-          <input x-model="modal.data.disparador" type="time"
+        <div x-show="modal.data.tipo_disparador === 'hora'">
+          <label class="text-sm text-muted-foreground mb-1 block">Hora</label>
+          <input x-model="modal.data.hora" type="time"
                  class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:border-primary" />
         </div>
         <div class="grid grid-cols-2 gap-3">
@@ -682,8 +682,8 @@
             <select x-model="modal.data.actuador_id"
                     class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:border-primary">
               <option value="">Seleccionar…</option>
-              <template x-for="a in globalStore.actuadores" :key="a.id">
-                <option :value="a.id" x-text="a.name || a.kind"></option>
+              <template x-for="a in globalStore.actuadores.filter(a => a.kind !== 'camera')" :key="a.id">
+                <option :value="a.id" x-text="(a.name || a.kind) + (a.room ? ' — ' + a.room : '')"></option>
               </template>
             </select>
           </div>
@@ -725,12 +725,13 @@
       </div>
 
       <div class="bg-black aspect-video relative">
-        <img x-show="modal.type === 'camara' && modal.data.online"
-            :src="modal.type === 'camara'? `https://api.domotic-dev.online/actuadores/${modal.data.id}/stream`: ''"
+        <img x-show="modal.data.online !== false"
+            :src="modal.type === 'camara' ? `https://api.domotic-dev.online/actuadores/${modal.data.id}/stream` : ''"
             class="w-full h-full object-contain"
             :alt="modal.data.name"
+            @load="modal.data.online = true"
             @error="modal.data.online = false" />
-        <div x-show="!modal.data.online"
+        <div x-show="modal.data.online === false"
             class="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground gap-2">
           <i data-lucide="video-off" class="h-10 w-10"></i>
           <p class="text-sm">Cámara sin conexión</p>

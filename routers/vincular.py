@@ -20,6 +20,7 @@ class ActuadorRegistro(BaseModel):
 class RegistroDispositivo(BaseModel):
     mac:        str
     codigo:     str
+    protocolo:  str = "http"   # "http" | "ws"
     sensores:   list[SensorRegistro]
     actuadores: list[ActuadorRegistro]
 
@@ -71,16 +72,18 @@ def registrar_dispositivo(datos: RegistroDispositivo, db=Depends(get_db)):
         (datos.mac,)
     ).fetchone()
 
+    protocolo = datos.protocolo if datos.protocolo in ("http", "ws") else "http"
+
     if existente:
         dispositivo_id = existente["id"]
         db.execute(
-            "UPDATE dispositivos SET ultimo_contacto = ? WHERE id = ?",
-            (ahora, dispositivo_id)
+            "UPDATE dispositivos SET ultimo_contacto = ?, protocolo = ? WHERE id = ?",
+            (ahora, protocolo, dispositivo_id)
         )
     else:
         cursor = db.execute(
-            "INSERT INTO dispositivos (mac, ultimo_contacto, fecha_registro) VALUES (?, ?, ?)",
-            (datos.mac, ahora, ahora)
+            "INSERT INTO dispositivos (mac, ultimo_contacto, fecha_registro, protocolo) VALUES (?, ?, ?, ?)",
+            (datos.mac, ahora, ahora, protocolo)
         )
         dispositivo_id = cursor.lastrowid
 
@@ -106,6 +109,7 @@ def registrar_dispositivo(datos: RegistroDispositivo, db=Depends(get_db)):
 
     return {
         "dispositivo_id": dispositivo_id,
+        "protocolo":      protocolo,
         "sensores":       sensores_creados,
         "actuadores":     actuadores_creados
     }

@@ -101,5 +101,11 @@ def init_db():
         )
     """)
 
+    # Migración: columna protocolo en dispositivos ('http' | 'ws')
+    try:
+        cursor.execute("ALTER TABLE dispositivos ADD COLUMN protocolo TEXT NOT NULL DEFAULT 'http'")
+    except Exception:
+        pass
+
     conexion.commit()
     conexion.close()
